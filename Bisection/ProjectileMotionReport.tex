@@ -1,0 +1,319 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\geometry{letterpaper}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{verbatim}
+\usepackage{setspace}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{float}
+
+% New commands for those pesky vectors-----------------
+\newcommand{\That}{{\mathbf{\hat{T}}}}
+\newcommand{\Nhat}{{\mathbf{\hat{N}}}}
+\newcommand{\ihat}{{\mathbf{\hat{i}}}}
+\newcommand{\jhat}{{\mathbf{\hat{j}}}}
+\newcommand{\rdot}{{\mathbf{\dot{r}}}}
+\newcommand{\rddot}{{\mathbf{\ddot{r}}}}
+\newcommand{\vdot}{{\mathbf{\dot{v}}}}
+\newcommand{\xdot}{{\mathbf{\dot{x}}}}
+\newcommand{\ydot}{{\mathbf{\dot{y}}}}
+\newcommand{\tdot}{{\dot{\theta}}}
+
+%------------------------Commands----------------------------
+
+\newcommand{\ds}{\displaystyle}
+\newcommand{\be}{\begin{enumerate}}
+\newcommand{\ee}{\end{enumerate}}
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+
+\newcommand{\uniti} {\,\mathbf{\hat{i}}}
+\newcommand{\unitj} {\,\mathbf{\hat{j}}}
+\newcommand{\unitk} {\,\mathbf{\hat{k}}}
+\newcommand{\unitT} {\mathbf{\hat{T}}}
+\newcommand{\unitN} {\mathbf{\hat{N}}}
+\newcommand{\unitB} {\mathbf{\hat{B}}}
+\newcommand{\unitn} {\mathbf{\hat{n}}}
+
+\newcommand{\bA} {{\bf A}}
+\newcommand{\bB} {{\bf B}}
+\newcommand{\bC} {{\bf C}}
+\newcommand{\bzero} {{\bf 0}}
+
+\newcommand{\br} {{\bf r}}
+\newcommand{\bv} {{\bf v}}
+\newcommand{\ba} {{\bf a}}
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+
+% ----------------------------------------------------------------------
+
+\title{APPM 3050\\Project \#1 - Projectile Motion}
+\author{Fiona Pigott, Dustin Martin, Christopher Miller}
+\date{April 6, 2012}
+
+\begin{document}
+
+\maketitle
+\clearpage
+
+\begin{abstract}
+
+Predicting the trajectory of a projectile through air presents computational and mathematical challenges in that it is impossible to analytically solve for the projectile's position at any given time. The only aspect of the motion of the projectile that is known is the force acting on it, and from there, the acceleration. In order to predict the path of an artillery shot, the acceleration is integrated numerically to give the approximate velocity and position at any given time.
+
+The goal of this project is to analyze the path of a projectile beginning at the origin with enough accuracy to aim it towards a target in the first quadrant of a coordinate axis. This is accomplished by numerically integrating the coupled system of differential equations that define the acceleration and finding where the resultant trajectories pass closest to the target. By using a bisection algorithm to find where the trajectory passes through the target, it is possible to zero in on a firing angle that will hit the target, while accounting for constant wind resistance.
+
+\end{abstract}
+
+\section{Background}
+
+Newton's second law governs the motion of moving bodies according to the equation :
+
+$$ \sum \mathbf{F} = m \dot \bv $$
+\hspace{1in} where: 
+$$ \bv = \dot \br $$
+
+\subsection{Physics of a projectile in still air}
+
+This equation shows that any change in net force acting on an object will result in a change in its acceleration based on its mass. When a projectile is fired through the air if only has two forces acting on it: the drag force and the force of gravity. The gravitational force will always act towards the earth (which we will denote as a $-\unitj$ direction in our two-dimensional model) and the drag force will always acting in the opposite direction the ball in traveling ($-\unitT$).The resulting sum of forces is: 
+
+\begin{equation} \label{eq:sumF}
+ \sum \mathbf{F} = -mg \unitj - C_{D} v^2 \unitT
+\end{equation}
+
+Since the initial velocity the projectile fires at is a constant, we can rewrite the velocity vector based on its dependence on theta in the \( \ihat \) and \( \jhat \) directions:
+
+ $$v = \dot x+ \dot y$$
+
+\hspace{1in} where: 
+
+\beq\label{eq:xdot}
+\dot x=v\cos({\theta})\uniti
+\eeq
+
+\hspace{1in} and:
+
+\beq\label{eq:ydot}
+ \dot y= v\sin({\theta})\unitj
+\eeq
+
+
+
+Finding the derivative of this function with respect to time results in:
+
+\beq\label{eq:vderive}
+\dot v = [\dot v \cos({\theta}) - v \sin ({\theta})\dot {\theta}] \uniti + [\dot v \sin({\theta}) + v \cos ({\theta})\dot {\theta}] \unitj
+\eeq
+
+Combining equations \eqref{eq:sumF} and \eqref{eq:vderive}, we can write a version of Newton's second law specifically applicable to our parameters:
+
+\beq\label{eq:refF}
+m[\dot v \cos({\theta}) - v \sin ({\theta})\dot {\theta}] \uniti +m[{\dot v \sin({\theta})+ v\cos ({\theta})\dot {\theta}] \unitj} = -mg \unitj - C_{D} v^{2} \unitT
+\eeq
+
+Currently, this equation is written in terms of the $\uniti$, $\unitj$, and $\unitT$ unit vectors. The $\uniti$ and $\unitj$ unit vectors can be written in terms of the tangential ($\unitT$) and normal ($\unitN$) unit vectors based on the $\theta$ the projectile was launched at. These relationships are as follows:
+
+\beq
+\uniti = \unitT \cos({\theta}) - \unitN \sin({\theta})
+\unitj = \unitT \sin({\theta}) + \unitN \cos({\theta})
+\eeq
+
+Substituting into equation \eqref{eq:refF}:
+
+
+ $$ m[\dot v \cos({\theta}) - v \sin ({\theta})\dot {\theta}]  (\unitT \cos({\theta}) - \unitN \sin({\theta})) +m[{\dot v \sin({\theta})+ v\cos ({\theta})\dot {\theta}] (\unitT \sin({\theta}) + \unitN \cos({\theta}))} =$$ 
+\beq
+ -mg (\unitT \sin({\theta}) + \unitN \cos({\theta})) - C_{D} v^{2} \unitT
+\eeq
+
+We can set the $\unitT$ and $\unitN$ components on either side of the equation equal to each other in order to determine the unknown variables in terms of the given constants. Let's start by grouping the $\unitT$ components:
+
+
+ $$m \cos({\theta})[\dot v \cos({\theta}) - v \sin ({\theta})\dot {\theta}] + m \sin({\theta}) [\dot v \sin({\theta}) + v \cos ({\theta})\dot {\theta}] = -mg \sin({\theta}) - C_{D} v^2$$
+
+
+
+$$m \dot v \cos^2({\theta})-mv\cos({\theta})\sin({\theta}) + m\dot v\sin^2({\theta})+mv\cos({\theta})\sin({\theta})=-mg \sin({\theta}) - C_{D} v^2$$
+
+
+$$m\dot v(\cos^2({\theta})+\sin^2({\theta}))=-mg \sin({\theta}) - C_{D} v^2$$
+
+
+\beq\label{eq:vdot}
+\dot v=-g \sin({\theta}) -\frac{ C_{D} v^2}{m}
+\eeq
+
+Now set the $\unitN$ components equal:
+
+$$ -m \sin({\theta})[\dot v \cos({\theta}) - v \sin ({\theta})\dot {\theta}] + m \cos({\theta}) [\dot v \sin({\theta}) + v \cos ({\theta})\dot {\theta}] = -mg \cos({\theta}) $$
+$$-\dot {v}\sin({\theta})\cos({\theta})+v\sin^2({\theta})\dot{\theta}+ \dot {v}\sin({\theta})\cos({\theta})+v\cos^2({\theta})\dot{\theta}=-g \cos({\theta}) $$
+$$\dot{\theta}v(\cos^2({\theta})+\sin^2({\theta}))=-g\cos({\theta})$$
+
+\beq\label{eq:thetadot}
+\dot {\theta} = -\frac{g}{v}\cos({\theta})
+\eeq
+
+Equations \eqref{eq:vdot} and \eqref{eq:thetadot}, combined with the x and y components of the velocity, equations \eqref{eq:xdot} and \eqref{eq:ydot}, give us four first order ODEs which can be used to determine the motion of the projectile (without wind).
+
+\subsection{Physics of a projectile with wind}
+
+Of course, since this project does include wind, we will need to slightly modify the equations above when factoring it in. This can be accomplished by splitting the velocity of the particle into three seperate, relative velocities. The velocity of the air with respect to the ground, $\bf v_{a/0}$, the velocity of the projectile relative to the ground, $\bf v_{p/0}$, and the velocity of the projectile relative to the air, $ \bf v_{p/a}$. The velocity of the air, relative to the ground is assumed to be:
+
+$$\bf v_{a/0}=\alpha\uniti+\beta\unitj$$
+
+where $\alpha$ and $\beta$ are constant values.
+
+These new assumptions will directly affect the drag force that the projectile experiences. The magnitude of the drag force, $\bf F_D$, becomes proportional to the speed of the projectile relative to the surrounding air, $ \bf v_{p/a}$. By using similar methods to the way the first set of ODE equations were calculated, the new set of first order ODE equations governing the projectile's motion with wind is calculated to be: 
+
+\beq
+\dot x=v\cos({\theta})\uniti
+\eeq
+
+\beq
+ \dot y= v\sin({\theta})\unitj
+\eeq
+
+\beq
+\dot v= - \frac{C_d}{m}|v_{p/a}|(v-\alpha\cos(\theta)-\beta\sin(\theta))-g\sin(\theta)
+\eeq
+
+
+\beq
+\dot \theta= - \frac{C_d}{mv}|v_{p/a}|(\alpha\sin(\theta)-\beta\cos(\theta))-\frac{g}{v}\cos(\theta)
+\eeq
+
+where $|v_{p/a}|=[(v\cos(\theta)-\alpha^2)+(v\sin(\theta)-\beta^2)]^{1/2}$ and $v=|v_{p/0}|=\dot x^2+\dot y^2$.
+
+
+\section{Approach While Coding}
+
+\subsection{Method}
+
+Any program that will zero in on a correct firing angle must be able to do two things: find any given trajectory and analyze it, and also run a root finding algorithm on the distance between the trajectory and the trajectory that hits a target.\\
+
+To find the trajectory, Target.m calls minimum\_dist.m, which uses MATLAB's built-in differential equation solver, ode45. Even without altering the default tolerance for error, this solver chooses intelligent time steps (large when the derivative is relatively constant, small when the derivative is changing rapidly) to integrate the coupled system of differential equations \( \xdot, \ydot, \vdot, \tdot \) to find a trajectory for one given \( \theta \). The ODE solver stops when a local minimum for the distance between the projectile and the target is minimized (This method will be explained later) . 
+
+The function minimum\_dist.m then uses the cross product between the final minimum distance vector  \( \mathbf{r_{t/p}} \) and the velocity vector \( \mathbf{v} \) generated by ode45 to output either -1 or 1: -1 if the guess for \( \theta \) is too low, 1 if the guess for \( \theta \) is too high.
+
+Target.m can then use the positive or negative output of minimum\_dist.m to characterize "overshot" and "undershot" distance values and run a bisection algorithm, which  begins with two ( \(\theta_{1} \) and \( \theta_{2}\) ) guesses around a possible location of a root, then choses new guesses as it narrows a range of possible zeros of the function by cutting out ranges where the sign of a function does not change.
+
+\begin{samepage}
+
+\begin{spacing}{1.25}
+
+A brief description of bisection:
+
+\begin{algorithmic}     
+
+\STATE \( \theta_{1} = \theta_{undershot } \)
+\STATE \( \theta_{2} = \theta_{overshot } \)
+
+\WHILE{\( \Delta \theta > tolerance \)}
+
+\STATE \( \theta_{mid} = (\theta_{1} + \theta_{2})/2 \)
+
+	\IF{ \( sign(\theta_{mid}) = sign(\theta_{1}) \)}
+		\STATE \( \theta_{1} \gets \theta_{mid} \)
+	\ELSE
+		\STATE \( \theta_{2} \gets \theta_{mid} \)
+	\ENDIF
+	
+\( \Delta \theta = \theta_{1}- \theta_{2} \)
+
+\ENDWHILE
+
+\end{algorithmic}
+
+\end{spacing}
+
+\end{samepage}
+
+When the bisection algorithm in Target.m finds a zero location, that \( \theta \) value is returned as the correct firing angle for given wind conditions and a given target.
+
+\subsection{Challenges}
+
+This project presented three major challenges to hitting a target. First, the program must be able to locate where in any given trajectory a closest approach occurs--that is, where the projectile comes the closest to hitting the target, and then stop the integrator. Second, it must be possible to decide which trajectories result from aiming to high with respect to the horizontal (overshots) and which miss the target because of angles that are too small (undershots). Third, it should be possible to find intelligent guesses for the aiming angles, both to avoid wasting computational time and ensure that the guesses for the bisection algorithm trap the root of the function.
+
+\subsubsection{Locating closest approach}
+
+In order to locate the time when the projectile is the closest to the target, our implementation uses the fact that in wind or no wind, the forces acting on the projectile do not vary in direction with respect to the coordinate axes. Gravity always acts in the  \( \jhat \) direction, and the wind is some vector field with a constant vector of some \( \alpha \ihat + \beta \jhat \) which is the same at all points. Using this, it is possible to say that when the projectile is traveling away from the target at an increasing rate, it will never again approach the target. The magnitude of the distance vector from the projectile to the target \( \mathbf{r_{t/p}} \) has reached a minimum (the point of closest approach), and the derivative of that magnitude \( \frac{d\mathbf{r_{t/p}}}{dt}\) \eqref{eq:drdt} passes through zero moving from negative to positive. \\
+
+The distance equation:
+\[  \mathbf{r_{t/p}}^2 = (x - x_{t})^{2} + (y - y_{t})^{2} \]
+
+Take the derivative to get:
+ \begin{equation} \label{eq:drdt}
+ \frac{d\mathbf{r_{t/p}}}{dt} =  \frac{(x - x_{t})\xdot + (y - y_{t})\ydot}{\mathbf{r_{t/p}}}
+ \end{equation}
+
+Using ode45's 'Event' option, the program locates a point where the derivative passes through zero going in the positive direction, and terminates the integration. 
+
+\subsubsection{Distinguishing between undershots and overshots}
+
+Next, in order to implement bisection, it is necessary to let distance cross the axis: that is, make sure that distance has positive and negative values. The targeting program uses a cross product to characterize over and undershots.\\
+
+For an overshot:
+The \( \mathbf{\hat{k}} \) component of \( \mathbf{r_{t/p  (final)}} \times \mathbf{v_{(final)}} > 0 \) \\
+
+For an undershot:
+The \( \mathbf{\hat{k}} \) component of \( \mathbf{r_{t/p (final)}} \times \mathbf{v_{(final)}} < 0 \) \\
+
+
+\subsubsection{Picking intelligent \( \theta \) guesses}
+
+It is necessary to choose intelligent, close guesses for \( \theta \). If the guesses do not trap the root, the bisection method will fail to converge on a zero; the narrower the guesses, the more likely it is that they do not trap the root. Conversely, if the guesses are very, very wide, they run the risk of converging on a false zero for some edge cases, and the bisection algorithm will take a long time to run.
+
+The targeting program relies on the physics of an artillery shot to make good initial \( \theta \) guesses. First, know that the perturbations caused by realistic winds on the trajectory of an artillery shell will be reasonably small. By first finding a correct firing angle for the no wind condition for any given target, the guesses for \(\theta_{1} \) and \( \theta_{2}\) can be defined as slightly greater and slightly smaller than the no wind \( \theta \). Intelligent guesses for finding \( \theta \) for a no wind condition to hit any target in the first quadrant are defined at the lower bound ( \(\theta_{1} \) ) as the angle directly from the origin to the target, a guaranteed undershot because of gravity, while the upper bound ( \(\theta_{2} \) ) is defined as \( \pi /2 \), the greatest possible angle for a target in the first quadrant. Solving for the accurate \(\theta\) value without wind, that value is used as our initial guess for the same target with wind. The program then calculates whether that \(\theta\) value results in an overshot or an undershot and sets it as \(\theta_{1} \) or \( \theta_{2}\) respectively; the other initial guess is calculated by adding or subtracting \( \pi /8 \) to the first guess depending on whether it was an undershot or overshot. Making sure that we have a good range for \( \theta \)  means that we eliminate false minimum values at extremely wide \( \theta \)s, which occur because the mathematical distance function does not have simple roots.
+
+\section{Limitations}
+
+Because of the method used to pick \( \theta \) guesses, this program can only hit targets in the first quadrant. Also because of our \( \theta \) selections, it will only hit targets under reasonable wind conditions. If the viscous effects of the wind were stronger compared to the inertial effects of the projectile's very high velocity, strong wind might be able to perturb the true solution outside of the specified guessing range. As the projectile is, reasonable winds will not affect its ability to hit a target.
+
+\section{Efficiency}
+
+The implementation of the targeting function is made more intelligent (and efficient) by a few features of the code. The stopping criterion was the first feature, as our integrator only integrates until it reached the stop condition, i.e. where the particle begins to accelerate away from the particle. Another feature that cut down computation time was an intelligent way to determine our initial $\theta$ guesses. Our narrow range of \( \theta \) guesses and the fact that we only look for the first instance of closest approach means that we often (but not always) select for the direct, and faster to compute, shots. Also, we never actually calculate the distance at a given \( \theta \), only the sign of the distance is finally calculated and returned. 
+
+In a further iterations of the code, the function could use a simplified version of the system of ODEs when there is no wind condition. By using the windless version of ODEs (excluding the alpha and beta terms) many calculations are cut out of the computation. 
+
+\clearpage 
+
+\section{Conclusion}
+
+The method enacted during this project proved to be quite successful, allowing for any target to be hit in the first quadrant. The use of cross-products and dot-products in order to determine undershots and overshots turned out to be reasonably robust, allowing this program to calculate the correct $\theta$, barring only extreme wind conditions.\\
+
+\bf{Result}: A plot of points along the integrated trajectory for a projectile fired at an angle that hits the target:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=.8\linewidth]{trajectory.png}
+\caption{For a target position of (500,930) and a wind that is acting at \( \mathbf{wind} = -100 \ihat + 0 \jhat \) }
+\end{figure}
+
+
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
